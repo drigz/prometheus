@@ -221,12 +221,6 @@ type EngineOpts struct {
 	// NoStepSubqueryIntervalFn is the default evaluation interval of
 	// a subquery in milliseconds if no step in range vector was specified `[30m:<step>]`.
 	NoStepSubqueryIntervalFn func(rangeMillis int64) int64
-
-	// EnableAtModifier if true enables @ modifier. Disabled otherwise.
-	EnableAtModifier bool
-
-	// EnableNegativeOffset if true enables negative (-) offset values. Disabled otherwise.
-	EnableNegativeOffset bool
 }
 
 // Engine handles the lifetime of queries from beginning to end.
@@ -241,8 +235,6 @@ type Engine struct {
 	queryLoggerLock          sync.RWMutex
 	lookbackDelta            time.Duration
 	noStepSubqueryIntervalFn func(rangeMillis int64) int64
-	enableAtModifier         bool
-	enableNegativeOffset     bool
 }
 
 // NewEngine returns a new engine.
@@ -323,8 +315,6 @@ func NewEngine(opts EngineOpts) *Engine {
 		activeQueryTracker:       opts.ActiveQueryTracker,
 		lookbackDelta:            opts.LookbackDelta,
 		noStepSubqueryIntervalFn: opts.NoStepSubqueryIntervalFn,
-		enableAtModifier:         opts.EnableAtModifier,
-		enableNegativeOffset:     opts.EnableNegativeOffset,
 	}
 }
 
@@ -386,10 +376,6 @@ func (ng *Engine) NewRangeQuery(q storage.Queryable, qs string, start, end time.
 }
 
 func (ng *Engine) newQuery(q storage.Queryable, expr parser.Expr, start, end time.Time, interval time.Duration) (*query, error) {
-	if err := ng.validateOpts(expr); err != nil {
-		return nil, err
-	}
-
 	es := &parser.EvalStmt{
 		Expr:     PreprocessExpr(expr, start, end),
 		Start:    start,
@@ -403,62 +389,6 @@ func (ng *Engine) newQuery(q storage.Queryable, expr parser.Expr, start, end tim
 		queryable: q,
 	}
 	return qry, nil
-}
-
-var (
-	ErrValidationAtModifierDisabled     = errors.New("@ modifier is disabled")
-	ErrValidationNegativeOffsetDisabled = errors.New("negative offset is disabled")
-)
-
-func (ng *Engine) validateOpts(expr parser.Expr) error {
-	if ng.enableAtModifier && ng.enableNegativeOffset {
-		return nil
-	}
-
-	var atModifierUsed, negativeOffsetUsed bool
-
-	var validationErr error
-	parser.Inspect(expr, func(node parser.Node, path []parser.Node) error {
-		switch n := node.(type) {
-		case *parser.VectorSelector:
-			if n.Timestamp != nil || n.StartOrEnd == parser.START || n.StartOrEnd == parser.END {
-				atModifierUsed = true
-			}
-			if n.OriginalOffset < 0 {
-				negativeOffsetUsed = true
-			}
-
-		case *parser.MatrixSelector:
-			vs := n.VectorSelector.(*parser.VectorSelector)
-			if vs.Timestamp != nil || vs.StartOrEnd == parser.START || vs.StartOrEnd == parser.END {
-				atModifierUsed = true
-			}
-			if vs.OriginalOffset < 0 {
-				negativeOffsetUsed = true
-			}
-
-		case *parser.SubqueryExpr:
-			if n.Timestamp != nil || n.StartOrEnd == parser.START || n.StartOrEnd == parser.END {
-				atModifierUsed = true
-			}
-			if n.OriginalOffset < 0 {
-				negativeOffsetUsed = true
-			}
-		}
-
-		if atModifierUsed && !ng.enableAtModifier {
-			validationErr = ErrValidationAtModifierDisabled
-			return validationErr
-		}
-		if negativeOffsetUsed && !ng.enableNegativeOffset {
-			validationErr = ErrValidationNegativeOffsetDisabled
-			return validationErr
-		}
-
-		return nil
-	})
-
-	return validationErr
 }
 
 func (ng *Engine) newTestQuery(f func(context.Context) error) Query {

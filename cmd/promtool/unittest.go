@@ -39,11 +39,11 @@ import (
 
 // RulesUnitTest does unit testing of rules based on the unit testing files provided.
 // More info about the file format can be found in the docs.
-func RulesUnitTest(queryOpts promql.LazyLoaderOpts, files ...string) int {
+func RulesUnitTest(files ...string) int {
 	failed := false
 
 	for _, f := range files {
-		if errs := ruleUnitTest(f, queryOpts); errs != nil {
+		if errs := ruleUnitTest(f); errs != nil {
 			fmt.Fprintln(os.Stderr, "  FAILED:")
 			for _, e := range errs {
 				fmt.Fprintln(os.Stderr, e.Error())
@@ -61,7 +61,7 @@ func RulesUnitTest(queryOpts promql.LazyLoaderOpts, files ...string) int {
 	return successExitCode
 }
 
-func ruleUnitTest(filename string, queryOpts promql.LazyLoaderOpts) []error {
+func ruleUnitTest(filename string) []error {
 	fmt.Println("Unit Testing: ", filename)
 
 	b, err := ioutil.ReadFile(filename)
@@ -96,7 +96,7 @@ func ruleUnitTest(filename string, queryOpts promql.LazyLoaderOpts) []error {
 	// Testing.
 	var errs []error
 	for _, t := range unitTestInp.Tests {
-		ers := t.test(evalInterval, groupOrderMap, queryOpts, unitTestInp.RuleFiles...)
+		ers := t.test(evalInterval, groupOrderMap, unitTestInp.RuleFiles...)
 		if ers != nil {
 			errs = append(errs, ers...)
 		}
@@ -152,9 +152,9 @@ type testGroup struct {
 }
 
 // test performs the unit tests.
-func (tg *testGroup) test(evalInterval time.Duration, groupOrderMap map[string]int, queryOpts promql.LazyLoaderOpts, ruleFiles ...string) []error {
+func (tg *testGroup) test(evalInterval time.Duration, groupOrderMap map[string]int, ruleFiles ...string) []error {
 	// Setup testing suite.
-	suite, err := promql.NewLazyLoader(nil, tg.seriesLoadingString(), queryOpts)
+	suite, err := promql.NewLazyLoader(nil, tg.seriesLoadingString())
 	if err != nil {
 		return []error{err}
 	}

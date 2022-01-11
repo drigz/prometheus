@@ -612,7 +612,6 @@ func (t *Test) clear() {
 		MaxSamples:               10000,
 		Timeout:                  100 * time.Second,
 		NoStepSubqueryIntervalFn: func(int64) int64 { return durationMilliseconds(1 * time.Minute) },
-		EnableAtModifier:         true,
 	}
 
 	t.queryEngine = NewEngine(opts)
@@ -674,22 +673,11 @@ type LazyLoader struct {
 	queryEngine *Engine
 	context     context.Context
 	cancelCtx   context.CancelFunc
-
-	opts LazyLoaderOpts
-}
-
-// LazyLoaderOpts are options for the lazy loader.
-type LazyLoaderOpts struct {
-	// Disabled PromQL engine features.
-	EnableAtModifier, EnableNegativeOffset bool
 }
 
 // NewLazyLoader returns an initialized empty LazyLoader.
-func NewLazyLoader(t testutil.T, input string, opts LazyLoaderOpts) (*LazyLoader, error) {
-	ll := &LazyLoader{
-		T:    t,
-		opts: opts,
-	}
+func NewLazyLoader(t testutil.T, input string) (*LazyLoader, error) {
+	ll := &LazyLoader{T: t}
 	err := ll.parse(input)
 	ll.clear()
 	return ll, err
@@ -735,8 +723,6 @@ func (ll *LazyLoader) clear() {
 		MaxSamples:               10000,
 		Timeout:                  100 * time.Second,
 		NoStepSubqueryIntervalFn: func(int64) int64 { return durationMilliseconds(ll.SubqueryInterval) },
-		EnableAtModifier:         ll.opts.EnableAtModifier,
-		EnableNegativeOffset:     ll.opts.EnableNegativeOffset,
 	}
 
 	ll.queryEngine = NewEngine(opts)

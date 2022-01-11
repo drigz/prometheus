@@ -109,7 +109,7 @@ func TestLazyLoader_WithSamplesTill(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		suite, err := NewLazyLoader(t, c.loadString, LazyLoaderOpts{})
+		suite, err := NewLazyLoader(t, c.loadString)
 		require.NoError(t, err)
 		defer suite.Close()
 

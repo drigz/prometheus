@@ -261,12 +261,11 @@ func (h *hintRecordingQuerier) Select(sortSeries bool, hints *storage.SelectHint
 
 func TestSelectHintsSetCorrectly(t *testing.T) {
 	opts := EngineOpts{
-		Logger:           nil,
-		Reg:              nil,
-		MaxSamples:       10,
-		Timeout:          10 * time.Second,
-		LookbackDelta:    5 * time.Second,
-		EnableAtModifier: true,
+		Logger:        nil,
+		Reg:           nil,
+		MaxSamples:    10,
+		Timeout:       10 * time.Second,
+		LookbackDelta: 5 * time.Second,
 	}
 
 	for _, tc := range []struct {
@@ -2395,78 +2394,6 @@ func TestPreprocessAndWrapWithStepInvariantExpr(t *testing.T) {
 			}
 			require.Equal(t, test.expected, expr, "error on input '%s'", test.input)
 		})
-	}
-}
-
-func TestEngineOptsValidation(t *testing.T) {
-	cases := []struct {
-		opts     EngineOpts
-		query    string
-		fail     bool
-		expError error
-	}{
-		{
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "metric @ 100", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1m] @ 100)", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1h:1m] @ 100)", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "metric @ start()", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1m] @ start())", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1h:1m] @ start())", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "metric @ end()", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1m] @ end())", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: false},
-			query: "rate(metric[1h:1m] @ end())", fail: true, expError: ErrValidationAtModifierDisabled,
-		}, {
-			opts:  EngineOpts{EnableAtModifier: true},
-			query: "metric @ 100",
-		}, {
-			opts:  EngineOpts{EnableAtModifier: true},
-			query: "rate(metric[1m] @ start())",
-		}, {
-			opts:  EngineOpts{EnableAtModifier: true},
-			query: "rate(metric[1h:1m] @ end())",
-		}, {
-			opts:  EngineOpts{EnableNegativeOffset: false},
-			query: "metric offset -1s", fail: true, expError: ErrValidationNegativeOffsetDisabled,
-		}, {
-			opts:  EngineOpts{EnableNegativeOffset: true},
-			query: "metric offset -1s",
-		}, {
-			opts:  EngineOpts{EnableAtModifier: true, EnableNegativeOffset: true},
-			query: "metric @ 100 offset -2m",
-		}, {
-			opts:  EngineOpts{EnableAtModifier: true, EnableNegativeOffset: true},
-			query: "metric offset -2m @ 100",
-		},
-	}
-
-	for _, c := range cases {
-		eng := NewEngine(c.opts)
-		_, err1 := eng.NewInstantQuery(nil, c.query, time.Unix(10, 0))
-		_, err2 := eng.NewRangeQuery(nil, c.query, time.Unix(0, 0), time.Unix(10, 0), time.Second)
-		if c.fail {
-			require.Equal(t, c.expError, err1)
-			require.Equal(t, c.expError, err2)
-		} else {
-			require.Nil(t, err1)
-			require.Nil(t, err2)
-		}
 	}
 }
 
